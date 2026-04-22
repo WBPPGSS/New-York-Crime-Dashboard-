@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New York Crime Dashboard</title>
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@500,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <style>
+    :root, [data-theme="light"] {
+      --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+      --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+      --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.05rem);
+      --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.45rem);
+      --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.15rem);
+      --space-1:.25rem;--space-2:.5rem;--space-3:.75rem;--space-4:1rem;--space-5:1.25rem;--space-6:1.5rem;--space-8:2rem;--space-10:2.5rem;
+      --color-bg:#f7f5f0;--color-surface:#fcfbf8;--color-surface-2:#f1ede5;--color-surface-offset:#e9e4db;--color-border:#d5cec3;--color-divider:#e4ddd3;
+      --color-text:#242019;--color-text-muted:#6d675f;--color-text-faint:#9e978d;--color-primary:#1a5276;--color-primary-soft:#d6e4f0;--color-warning:#b17f06;--color-accent:#7b5ce0;--color-success:#467b24;
+      --shadow-sm:0 2px 8px rgba(36,32,25,.06);--shadow-md:0 14px 36px rgba(36,32,25,.10);--shadow-lg:0 24px 60px rgba(36,32,25,.14);
+      --radius-md:.85rem;--radius-lg:1.15rem;--radius-xl:1.5rem;--radius-full:9999px;
+      --font-body:'Satoshi',Inter,sans-serif;--font-display:'Cabinet Grotesk','Satoshi',sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg:#13161a;--color-surface:#181c21;--color-surface-2:#1e2329;--color-surface-offset:#252b33;--color-border:#323a44;--color-divider:#2a3038;
+      --color-text:#dfe6ee;--color-text-muted:#8fa3b8;--color-text-faint:#5c7185;--color-primary:#5b9bd5;--color-primary-soft:#1a2e42;--color-warning:#ebbe57;--color-accent:#b198ff;--color-success:#83ba62;
+      --shadow-sm:0 2px 8px rgba(0,0,0,.25);--shadow-md:0 14px 36px rgba(0,0,0,.36);--shadow-lg:0 24px 60px rgba(0,0,0,.42);
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{min-height:100vh;font-family:var(--font-body);font-size:var(--text-base);line-height:1.55;color:var(--color-text);background:radial-gradient(circle at top left,color-mix(in srgb,var(--color-primary) 13%,transparent),transparent 28%),radial-gradient(circle at right top,color-mix(in srgb,var(--color-warning) 10%,transparent),transparent 22%),var(--color-bg);}
+    button,select,input{font:inherit;color:inherit;}
+    .app{max-width:1480px;margin:0 auto;padding:var(--space-6);}
+    .hero,.panel,.map-toolbar{background:color-mix(in srgb,var(--color-surface) 92%,transparent);border:1px solid color-mix(in srgb,var(--color-text) 8%,transparent);box-shadow:var(--shadow-sm);}
+    .hero{position:relative;overflow:hidden;border-radius:var(--radius-xl);padding:var(--space-10);box-shadow:var(--shadow-lg);margin-bottom:var(--space-6);background:linear-gradient(140deg,color-mix(in srgb,var(--color-primary) 12%,var(--color-surface)),var(--color-surface));}
+    .hero:before{content:'';position:absolute;right:-2rem;top:-2rem;width:14rem;height:14rem;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--color-accent) 18%,transparent),transparent 68%);filter:blur(12px);}
+    .hero-head{display:flex;justify-content:space-between;gap:var(--space-6);flex-wrap:wrap;align-items:flex-start;margin-bottom:var(--space-8);position:relative;z-index:1;}
+    .brand{display:flex;gap:var(--space-4);align-items:flex-start;}
+    .logo{width:3.4rem;height:3.4rem;border-radius:1rem;display:grid;place-items:center;color:white;background:linear-gradient(135deg,var(--color-primary),color-mix(in srgb,var(--color-primary) 65%,var(--color-accent)));box-shadow:var(--shadow-md);flex:0 0 auto;}
+    .logo svg{width:1.8rem;height:1.8rem;}
+    .eyebrow{text-transform:uppercase;letter-spacing:.09em;color:var(--color-text-muted);font-size:var(--text-xs);margin-bottom:var(--space-2);}
+    h1{font-family:var(--font-display);font-size:var(--text-xl);line-height:1.02;max-width:14ch;margin-bottom:var(--space-3);}
+    .hero p{max-width:72ch;color:var(--color-text-muted);}
+    .theme-toggle{min-height:44px;padding:.8rem 1rem;border-radius:var(--radius-full);border:1px solid color-mix(in srgb,var(--color-text) 12%,transparent);background:color-mix(in srgb,var(--color-surface) 88%,transparent);cursor:pointer;}
+    .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-4);position:relative;z-index:1;}
+    .card{padding:var(--space-5);border-radius:var(--radius-lg);background:color-mix(in srgb,var(--color-surface) 88%,transparent);border:1px solid color-mix(in srgb,var(--color-text) 8%,transparent);}
+    .label{font-size:var(--text-xs);color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:var(--space-3);}
+    .value{font-size:clamp(1.45rem,1.1rem + 1vw,2rem);font-weight:700;font-variant-numeric:tabular-nums;margin-bottom:var(--space-2);}
+    .sub{color:var(--color-text-muted);font-size:var(--text-sm);}
+    .panel{border-radius:var(--radius-lg);padding:var(--space-5);}
+    .panel-head{display:flex;justify-content:space-between;align-items:center;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-5);}
+    .title{font-size:var(--text-lg);font-weight:700;letter-spacing:-.02em;}
+    .title-sub{color:var(--color-text-muted);font-size:var(--text-sm);margin-top:.2rem;}
+    .pill{display:inline-flex;align-items:center;gap:.4rem;padding:.38rem .72rem;border-radius:var(--radius-full);background:var(--color-primary-soft);color:var(--color-primary);font-size:var(--text-xs);font-weight:700;white-space:nowrap;}
+    .filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-4);margin-bottom:var(--space-5);}
+    .filter{padding:var(--space-4);background:var(--color-surface);border:1px solid color-mix(in srgb,var(--color-text) 8%,transparent);border-radius:var(--radius-lg);}
+    .filter label{display:block;margin-bottom:var(--space-2);color:var(--color-text-muted);font-size:var(--text-xs);text-transform:uppercase;letter-spacing:.08em;}
+    select,input{width:100%;min-height:44px;border-radius:var(--radius-md);border:1px solid var(--color-border);background:var(--color-surface-2);padding:.85rem .95rem;outline:none;}
+    .summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-4);}
+    .summary-card{padding:var(--space-5);background:linear-gradient(180deg,var(--color-surface),color-mix(in srgb,var(--color-surface-2) 90%,transparent));border:1px solid color-mix(in srgb,var(--color-text) 8%,transparent);border-radius:var(--radius-lg);}
+    .summary-card h3{font-size:var(--text-base);margin-bottom:.35rem;}
+    .summary-card .big{font-size:clamp(1.55rem,1.2rem + 1vw,2.2rem);font-weight:700;margin-bottom:.4rem;font-variant-numeric:tabular-nums;}
+    .summary-card p{color:var(--color-text-muted);font-size:var(--text-sm);}
+    .bar{margin-top:1rem;height:10px;border-radius:999px;background:color-mix(in srgb,var(--color-primary) 10%,var(--color-surface-offset));overflow:hidden;}
+    .bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--color-primary),color-mix(in srgb,var(--color-primary) 55%,var(--color-accent)));border-radius:999px;}
+    .map-section{margin-top:var(--space-6);}
+    .map-toolbar{display:grid;grid-template-columns:1fr auto;gap:var(--space-4);padding:var(--space-4);border-radius:var(--radius-lg) var(--radius-lg) 0 0;border-bottom:0;}
+    .map-legend{display:flex;flex-wrap:wrap;gap:.7rem;align-items:center;color:var(--color-text-muted);font-size:var(--text-sm);}
+    .legend-item{display:inline-flex;align-items:center;gap:.4rem;}
+    .dot{width:.8rem;height:.8rem;border-radius:50%;}
+    #crimeMap{height:540px;border-radius:0 0 var(--radius-lg) var(--radius-lg);border:1px solid color-mix(in srgb,var(--color-text) 8%,transparent);overflow:hidden;}
+    .main{display:grid;grid-template-columns:1.02fr 1.38fr;gap:var(--space-6);margin-top:var(--space-6);}
+    .chart-wrap{height:360px;}
+    .table-wrap{overflow:auto;border:1px solid color-mix(in srgb,var(--color-text) 8%,transparent);border-radius:var(--radius-lg);background:var(--color-surface);}
+    table{width:100%;border-collapse:collapse;min-width:720px;}
+    th,td{padding:.92rem 1rem;border-bottom:1px solid var(--color-divider);text-align:left;vertical-align:top;font-variant-numeric:tabular-nums;}
+    thead th{position:sticky;top:0;background:color-mix(in srgb,var(--color-surface-2) 96%,transparent);z-index:2;color:var(--color-text-muted);font-size:var(--text-xs);text-transform:uppercase;letter-spacing:.08em;cursor:pointer;user-select:none;}
+    tbody tr:hover{background:color-mix(in srgb,var(--color-primary) 5%,var(--color-surface));}
+    .crime-type{font-weight:700;margin-bottom:.1rem;}
+    .muted,.leaflet-popup-content{color:var(--color-text-muted);font-size:var(--text-sm);}
+    .empty{padding:var(--space-10);text-align:center;color:var(--color-text-muted);}
+    .footnote{margin-top:var(--space-4);color:var(--color-text-muted);font-size:var(--text-sm);}
+    .leaflet-container{background:var(--color-surface-offset);}
+
+    /* Loading overlay */
+    #loadingOverlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--color-bg);z-index:9999;gap:1.5rem;transition:opacity .4s;}
+    #loadingOverlay.hidden{opacity:0;pointer-events:none;}
+    .spinner{width:2.5rem;height:2.5rem;border:3px solid var(--color-border);border-top-color:var(--color-primary);border-radius:50%;animation:spin .8s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .loading-title{font-family:var(--font-display);font-size:var(--text-lg);font-weight:700;}
+    .loading-sub{color:var(--color-text-muted);font-size:var(--text-sm);}
+    .error-box{background:color-mix(in srgb,#cf4b5a 12%,var(--color-surface));border:1px solid color-mix(in srgb,#cf4b5a 30%,transparent);border-radius:var(--radius-lg);padding:var(--space-5);max-width:480px;text-align:center;}
+    .error-box h2{color:#cf4b5a;margin-bottom:.5rem;}
+    .error-box p{color:var(--color-text-muted);font-size:var(--text-sm);}
+
+    @media(max-width:1100px){.stats,.filters{grid-template-columns:repeat(2,minmax(0,1fr));}.main{grid-template-columns:1fr;}.map-toolbar{grid-template-columns:1fr;}}
+    @media(max-width:720px){.app{padding:var(--space-4);}.hero{padding:var(--space-6);}.stats,.filters,.summary{grid-template-columns:1fr;}h1{max-width:100%;}.chart-wrap{height:300px;}#crimeMap{height:420px;}}
+  </style>
+</head>
+<body>
+
+  <!-- Loading overlay -->
+  <div id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-title">Loading NYPD complaint data…</div>
+    <div class="loading-sub" id="loadingStatus">Querying NYC Open Data for Precincts 001 &amp; 006</div>
+  </div>
+
+  <div class="app" id="app">
+    <section class="hero">
+      <div class="hero-head">
+        <div class="brand">
+          <div class="logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </div>
+          <div>
+            <div class="eyebrow">NYPD historical reported complaints</div>
+            <h1>NYC office crime dashboard</h1>
+            <p>Crime incidents reported near <strong>345 Hudson St</strong> and <strong>117 Barrow St</strong> — Precincts 001 (Tribeca / FiDi) and 006 (West Village / Hudson Square). Geofence rings show 500 m walking radius around each office.</p>
+          </div>
+        </div>
+        <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">Theme</button>
+      </div>
+      <div class="stats" id="heroStats">
+        <div class="card"><div class="label">Visible incidents</div><div class="value">—</div><div class="sub">Loading…</div></div>
+        <div class="card"><div class="label">Precinct 001</div><div class="value">—</div><div class="sub">Loading…</div></div>
+        <div class="card"><div class="label">Precinct 006</div><div class="value">—</div><div class="sub">Loading…</div></div>
+        <div class="card"><div class="label">Largest category</div><div class="value" style="font-size:1.15rem;line-height:1.2;">—</div><div class="sub">Loading…</div></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="title">Filters and controls</div>
+          <div class="title-sub">Filter the chart and table below. Use the map crime menu to switch point overlays.</div>
+        </div>
+        <span class="pill" id="rowPill">— rows</span>
+      </div>
+      <div class="filters">
+        <div class="filter"><label for="yearFilter">Year</label><select id="yearFilter"><option value="All">All</option></select></div>
+        <div class="filter"><label for="districtFilter">Precinct</label><select id="districtFilter"><option value="All">All</option><option value="001">001 – Tribeca / FiDi</option><option value="006">006 – West Village</option></select></div>
+        <div class="filter"><label for="typeFilter">Offense type</label><select id="typeFilter"><option value="All">All</option></select></div>
+        <div class="filter"><label for="searchFilter">Search</label><input id="searchFilter" type="search" placeholder="robbery, 101, assault…" /></div>
+      </div>
+      <div class="summary" id="summary"></div>
+    </section>
+
+    <section class="map-section">
+      <div class="map-toolbar">
+        <div>
+          <div class="title">Interactive crime map</div>
+          <div class="title-sub">Geofence rings mark 500 m radius around 345 Hudson St (teal) and 117 Barrow St (gold). Switch overlays to focus on specific crime types.</div>
+        </div>
+        <div style="display:flex;gap:1rem;align-items:end;flex-wrap:wrap;">
+          <button id="mapFullscreenBtn" class="theme-toggle" type="button" aria-label="Toggle fullscreen map">Full screen</button>
+          <button id="mapResetBtn" class="theme-toggle" type="button" aria-label="Reset map view">Reset view</button>
+          <div style="min-width:220px;">
+            <div class="filter">
+              <label for="mapCrimeFilter">Map overlay</label>
+              <select id="mapCrimeFilter">
+                <option value="ALL">All mapped crimes</option>
+                <option value="ROBBERY">Robbery</option>
+                <option value="FELONY ASSAULT">Felony assault</option>
+                <option value="MURDER & NON-NEGL. MANSLAUGHTER">Homicide</option>
+                <option value="RAPE">Rape</option>
+              </select>
+            </div>
+          </div>
+          <div style="min-width:160px;">
+            <div class="filter">
+              <label for="mapYearFilter">Map year</label>
+              <select id="mapYearFilter"><option value="ALL">All years</option></select>
+            </div>
+          </div>
+          <div style="min-width:180px;">
+            <div class="filter">
+              <label for="geofenceOnlyToggle">Geofence filter</label>
+              <select id="geofenceOnlyToggle">
+                <option value="OFF">All precincts</option>
+                <option value="HUDSON">345 Hudson only</option>
+                <option value="BARROW">117 Barrow only</option>
+                <option value="BOTH">Both offices only</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="map-legend" style="padding:.75rem 1rem;background:color-mix(in srgb,var(--color-surface) 92%,transparent);border:1px solid color-mix(in srgb,var(--color-text) 8%,transparent);border-top:0;border-bottom:0;">
+        <span style="font-size:var(--text-xs);text-transform:uppercase;letter-spacing:.08em;color:var(--color-text-muted);margin-right:.5rem;">Map key:</span>
+        <span class="legend-item"><span class="dot" style="background:#cf4b5a"></span> Robbery</span>
+        <span class="legend-item"><span class="dot" style="background:#2f7fd3"></span> Felony assault</span>
+        <span class="legend-item"><span class="dot" style="background:#111111"></span> Homicide</span>
+        <span class="legend-item"><span class="dot" style="background:#e59a00"></span> Rape</span>
+        <span class="legend-item"><span class="dot" style="background:#555"></span> Other</span>
+        <span class="legend-item" style="margin-left:auto;"><span style="display:inline-block;width:.8rem;height:.8rem;border-radius:50%;border:2px solid #1a5276;background:rgba(26,82,118,.15);"></span> 345 Hudson</span>
+        <span class="legend-item"><span style="display:inline-block;width:.8rem;height:.8rem;border-radius:50%;border:2px solid #b17f06;background:rgba(177,127,6,.15);"></span> 117 Barrow</span>
+      </div>
+      <div id="crimeMap"></div>
+    </section>
+
+    <div class="main">
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="title">Yearly trend</div>
+            <div class="title-sub">Complaint volume by year and precinct</div>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="title">Complaint records</div>
+            <div class="title-sub">NYPD complaint data by offense classification</div>
+          </div>
+          <span class="pill" id="rowPill2">— rows</span>
+        </div>
+        <div class="table-wrap" id="tableWrap"><div class="empty">Loading data…</div></div>
+        <p class="footnote">Source: <a href="https://data.cityofnewyork.us/Public-Safety/NYPD-Complaint-Data-Historic/qgea-i56i" target="_blank" rel="noopener">NYC Open Data — NYPD Complaint Data</a>. Live data fetched on page load.</p>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    // ─── Configuration ───────────────────────────────────────────────────────
+    const PRECINCTS = ['001', '006'];
+    const PRECINCT_LABELS = {
+      '001': 'Precinct 001 – Tribeca / FiDi',
+      '006': 'Precinct 006 – West Village / Hudson Square'
+    };
+    const GEOFENCES = [
+      { center: [40.7267, -74.0074], radiusMeters: 500, label: '345 Hudson St', color: '#1a5276', fill: 'rgba(26,82,118,0.12)' },
+      { center: [40.7291, -74.0025], radiusMeters: 500, label: '117 Barrow St', color: '#b17f06', fill: 'rgba(177,127,6,0.12)' }
+    ];
+    const MAP_CENTER  = [40.7279, -74.0050];
+    const MAP_ZOOM    = 15;
+    const MAP_COLORS  = {
+      'ROBBERY': '#cf4b5a',
+      'FELONY ASSAULT': '#2f7fd3',
+      'MURDER & NON-NEGL. MANSLAUGHTER': '#111111',
+      'RAPE': '#e59a00'
+    };
+
+    // NYC Open Data API endpoints
+    const HISTORIC_URL = 'https://data.cityofnewyork.us/resource/qgea-i56i.json';
+    const CURRENT_URL  = 'https://data.cityofnewyork.us/resource/5uac-w243.json';
+
+    // ─── App state ───────────────────────────────────────────────────────────
+    const state = {
+      year: 'All', district: 'All', type: 'All', search: '',
+      sortKey: 'count', sortDir: 'desc',
+      theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+      chart: null, map: null, layer: null,
+      mapCrime: 'ALL', mapYear: 'ALL', geofenceOnly: 'OFF'
+    };
+
+    let DATA       = {};   // DATA[year][precinct][offense] = { total, iucrs:[{iucr,desc,count}] }
+    let MAP_POINTS = [];   // [{id,date,year,district,primary_type,description,iucr,lat,lon}]
+    let YEARS      = [];
+
+    // ─── Fetch helpers ───────────────────────────────────────────────────────
+    function soqlUrl(base, params) {
+      const url = new URL(base);
+      Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+      return url.toString();
+    }
+
+    async function fetchJSON(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status} from ${url}`);
+      return res.json();
+    }
+
+    function setStatus(msg) {
+      const el = document.getElementById('loadingStatus');
+      if (el) el.textContent = msg;
+    }
+
+    // ─── Data loading ────────────────────────────────────────────────────────
+    async function fetchAggregated(baseUrl, startYear, endYear) {
+      const url = soqlUrl(baseUrl, {
+        '$select': "date_extract_y(cmplnt_fr_dt) AS yr, addr_pct_cd AS pct, ofns_desc, ky_cd, pd_desc, COUNT(*) AS cnt",
+        '$where' : `addr_pct_cd IN ('1','6') AND cmplnt_fr_dt >= '${startYear}-01-01T00:00:00.000' AND cmplnt_fr_dt < '${endYear}-01-01T00:00:00.000' AND ofns_desc IS NOT NULL`,
+        '$group'  : "yr, pct, ofns_desc, ky_cd, pd_desc",
+        '$limit'  : '50000'
+      });
+      return fetchJSON(url);
+    }
+
+    async function fetchMapPoints(baseUrl, startYear, endYear) {
+      const url = soqlUrl(baseUrl, {
+        '$select': "cmplnt_num, cmplnt_fr_dt, addr_pct_cd, ofns_desc, pd_desc, ky_cd, latitude, longitude",
+        '$where' : `addr_pct_cd IN ('1','6') AND cmplnt_fr_dt >= '${startYear}-01-01T00:00:00.000' AND cmplnt_fr_dt < '${endYear}-01-01T00:00:00.000' AND ofns_desc IN ('ROBBERY','FELONY ASSAULT','MURDER & NON-NEGL. MANSLAUGHTER','RAPE') AND latitude IS NOT NULL AND longitude IS NOT NULL`,
+        '$order'  : 'cmplnt_fr_dt DESC',
+        '$limit'  : '5000'
+      });
+      return fetchJSON(url);
+    }
+
+    function normPct(raw) {
+      // API returns '1', '6' — pad to '001', '006'
+      return String(parseInt(raw || '0')).padStart(3, '0');
+    }
+
+    function buildData(rows) {
+      rows.forEach(row => {
+        const yr  = String(parseInt(row.yr || 0));
+        const pct = normPct(row.pct);
+        const off = (row.ofns_desc || 'UNKNOWN').trim();
+        const ky  = (row.ky_cd || '???').trim();
+        const pd  = (row.pd_desc || '').trim();
+        const cnt = parseInt(row.cnt || 0);
+        if (!yr || !['001','006'].includes(pct)) return;
+        if (!DATA[yr]) DATA[yr] = {};
+        if (!DATA[yr][pct]) DATA[yr][pct] = {};
+        if (!DATA[yr][pct][off]) DATA[yr][pct][off] = { total: 0, iucrs: [] };
+        DATA[yr][pct][off].total += cnt;
+        DATA[yr][pct][off].iucrs.push({ iucr: ky, desc: pd, count: cnt });
+      });
+    }
+
+    function buildMapPoints(rows) {
+      rows.forEach(p => {
+        const lat = parseFloat(p.latitude);
+        const lon = parseFloat(p.longitude);
+        if (isNaN(lat) || isNaN(lon)) return;
+        MAP_POINTS.push({
+          id: p.cmplnt_num || Math.random().toString(36).slice(2),
+          date: p.cmplnt_fr_dt || '',
+          year: p.cmplnt_fr_dt ? p.cmplnt_fr_dt.slice(0, 4) : '?',
+          district: normPct(p.addr_pct_cd),
+          primary_type: (p.ofns_desc || '').trim(),
+          description: (p.pd_desc || '').trim(),
+          iucr: (p.ky_cd || '').trim(),
+          lat, lon
+        });
+      });
+    }
+
+    async function loadData() {
+      try {
+        setStatus('Fetching 2020–2022 historic data…');
+        const [histAgg, histMap] = await Promise.all([
+          fetchAggregated(HISTORIC_URL, 2020, 2023),
+          fetchMapPoints(HISTORIC_URL, 2020, 2023)
+        ]);
+
+        setStatus('Fetching 2023–2025 current data…');
+        const [currAgg, currMap] = await Promise.all([
+          fetchAggregated(CURRENT_URL, 2023, 2026),
+          fetchMapPoints(CURRENT_URL, 2023, 2026)
+        ]);
+
+        setStatus('Building dashboard…');
+        buildData([...histAgg, ...currAgg]);
+        buildMapPoints([...histMap, ...currMap]);
+
+        YEARS = Object.keys(DATA).sort();
+
+        // Populate year filters
+        const yearFilter   = document.getElementById('yearFilter');
+        const mapYearFilter = document.getElementById('mapYearFilter');
+        YEARS.forEach(y => {
+          yearFilter.innerHTML   += `<option value="${y}">${y}</option>`;
+          mapYearFilter.innerHTML += `<option value="${y}">${y}</option>`;
+        });
+
+        // Populate type filter
+        fillSelect(document.getElementById('typeFilter'), getTypes());
+
+      } catch (err) {
+        console.error(err);
+        document.getElementById('loadingOverlay').innerHTML = `
+          <div class="error-box">
+            <h2>Could not load data</h2>
+            <p>Unable to reach the NYC Open Data API. Check your internet connection and try reloading.<br><br><em>${err.message}</em></p>
+            <button class="theme-toggle" style="margin-top:1rem;" onclick="location.reload()">Retry</button>
+          </div>`;
+        throw err;
+      }
+    }
+
+    // ─── Utility ─────────────────────────────────────────────────────────────
+    const $ = s => document.querySelector(s);
+
+    function fillSelect(el, values) {
+      el.innerHTML = '<option value="All">All</option>' + values.map(v => `<option value="${v}">${v}</option>`).join('');
+    }
+
+    function getTypes() {
+      const set = new Set();
+      Object.values(DATA).forEach(byDistrict =>
+        Object.values(byDistrict).forEach(byType =>
+          Object.keys(byType).forEach(t => set.add(t))
+        )
+      );
+      return [...set].sort((a, b) => a.localeCompare(b));
+    }
+
+    function rows() {
+      const years = state.year === 'All' ? YEARS : [state.year];
+      const out = [];
+      years.forEach(year => {
+        const byDistrict = DATA[year] || {};
+        const districts  = state.district === 'All' ? Object.keys(byDistrict) : [state.district];
+        districts.forEach(district => {
+          const byType = byDistrict[district] || {};
+          Object.entries(byType).forEach(([type, payload]) => {
+            if (state.type !== 'All' && type !== state.type) return;
+            payload.iucrs.forEach(item => {
+              const hay = `${year} ${district} ${type} ${item.iucr} ${item.desc}`.toLowerCase();
+              if (state.search && !hay.includes(state.search.toLowerCase())) return;
+              out.push({ year, district, primaryType: type, iucr: item.iucr, description: item.desc || '—', count: item.count });
+            });
+          });
+        });
+      });
+      const dir = state.sortDir === 'asc' ? 1 : -1;
+      out.sort((a, b) => (
+        (typeof a[state.sortKey] === 'number'
+          ? a[state.sortKey] - b[state.sortKey]
+          : String(a[state.sortKey]).localeCompare(String(b[state.sortKey]))
+        ) * dir
+      ));
+      return out;
+    }
+
+    function totalsForType(type = 'All') {
+      const totals = { '001': 0, '006': 0 };
+      Object.values(DATA).forEach(byDistrict =>
+        Object.entries(byDistrict).forEach(([district, byType]) =>
+          Object.entries(byType).forEach(([t, payload]) => {
+            if (type !== 'All' && t !== type) return;
+            if (totals[district] !== undefined) totals[district] += payload.total;
+          })
+        )
+      );
+      return totals;
+    }
+
+    function yearlyTotals(district) {
+      return YEARS.map(year => {
+        const byType = ((DATA[year] || {})[district]) || {};
+        let total = 0;
+        Object.entries(byType).forEach(([t, p]) => {
+          if (state.type === 'All' || state.type === t) total += p.total;
+        });
+        return total;
+      });
+    }
+
+    // ─── Render functions ────────────────────────────────────────────────────
+    function renderHero() {
+      const totals = totalsForType(state.type);
+      const typeTotals = {};
+      Object.values(DATA).forEach(byDistrict =>
+        Object.values(byDistrict).forEach(byType =>
+          Object.entries(byType).forEach(([t, p]) =>
+            typeTotals[t] = (typeTotals[t] || 0) + p.total
+          )
+        )
+      );
+      const top   = Object.entries(typeTotals).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
+      const total = totals['001'] + totals['006'];
+      $('#heroStats').innerHTML = `
+        <div class="card"><div class="label">Visible incidents</div><div class="value">${total.toLocaleString()}</div><div class="sub">Current chart and table scope</div></div>
+        <div class="card"><div class="label">Precinct 001</div><div class="value">${totals['001'].toLocaleString()}</div><div class="sub">Tribeca / FiDi total in view</div></div>
+        <div class="card"><div class="label">Precinct 006</div><div class="value">${totals['006'].toLocaleString()}</div><div class="sub">West Village / Hudson Square</div></div>
+        <div class="card"><div class="label">Largest category</div><div class="value" style="font-size:1.15rem;line-height:1.2;">${top[0]}</div><div class="sub">${top[1].toLocaleString()} incidents in source range</div></div>`;
+    }
+
+    function renderSummary() {
+      const totals   = totalsForType(state.type);
+      const combined = Math.max(1, totals['001'] + totals['006']);
+      $('#summary').innerHTML = PRECINCTS.map(d => {
+        const pct = (totals[d] / combined) * 100;
+        return `<article class="summary-card">
+          <h3>${PRECINCT_LABELS[d]}</h3>
+          <div class="big">${totals[d].toLocaleString()}</div>
+          <p>${state.type === 'All' ? 'All reported complaints 2020–2025.' : `Reported complaints for ${state.type.toLowerCase()}.`}</p>
+          <div class="bar"><span style="width:${pct.toFixed(1)}%"></span></div>
+          <p style="margin-top:.65rem;">${pct.toFixed(1)}% of the currently visible total.</p>
+        </article>`;
+      }).join('');
+    }
+
+    function renderTable() {
+      const r = rows();
+      const pill = `${r.length.toLocaleString()} rows`;
+      $('#rowPill').textContent  = pill;
+      $('#rowPill2').textContent = pill;
+      if (!r.length) { $('#tableWrap').innerHTML = '<div class="empty">No rows match the current filters.</div>'; return; }
+      const headers = [['year','Year'],['district','Precinct'],['primaryType','Offense type'],['iucr','Key code'],['description','Description'],['count','Count']];
+      const head = headers.map(([k, l]) =>
+        `<th data-key="${k}">${l}${state.sortKey === k ? ` <span style="color:var(--color-primary)">${state.sortDir === 'asc' ? '↑' : '↓'}</span>` : ''}</th>`
+      ).join('');
+      const body = r.map(x =>
+        `<tr>
+          <td>${x.year}</td>
+          <td><span class="pill">${x.district}</span></td>
+          <td><div class="crime-type">${x.primaryType}</div></td>
+          <td>${x.iucr}</td>
+          <td><div>${x.description}</div><div class="muted">${x.primaryType}</div></td>
+          <td><strong>${x.count.toLocaleString()}</strong></td>
+        </tr>`
+      ).join('');
+      $('#tableWrap').innerHTML = `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+      $('#tableWrap').querySelectorAll('th[data-key]').forEach(th =>
+        th.addEventListener('click', () => {
+          const key = th.dataset.key;
+          if (state.sortKey === key) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+          else { state.sortKey = key; state.sortDir = key === 'count' ? 'desc' : 'asc'; }
+          renderTable();
+        })
+      );
+    }
+
+    function renderChart() {
+      const ctx       = document.getElementById('trendChart');
+      const textColor = getComputedStyle(document.documentElement).getPropertyValue('--color-text-muted').trim();
+      const gridColor = state.theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(36,32,25,0.08)';
+      if (state.chart) state.chart.destroy();
+      state.chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: YEARS,
+          datasets: [
+            { label: 'Precinct 001', data: yearlyTotals('001'), borderColor: '#1a5276', backgroundColor: 'rgba(26,82,118,0.12)', tension: 0.35, fill: true, borderWidth: 2.5, pointRadius: 3 },
+            { label: 'Precinct 006', data: yearlyTotals('006'), borderColor: '#b17f06', backgroundColor: 'rgba(177,127,6,0.12)',  tension: 0.35, fill: true, borderWidth: 2.5, pointRadius: 3 }
+          ]
+        },
+        options: {
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { labels: { color: textColor, usePointStyle: true, boxWidth: 10 } } },
+          scales: {
+            x: { ticks: { color: textColor }, grid: { color: gridColor } },
+            y: { ticks: { color: textColor }, grid: { color: gridColor } }
+          }
+        }
+      });
+    }
+
+    // ─── Map ─────────────────────────────────────────────────────────────────
+    function initMap() {
+      state.map   = L.map('crimeMap', { zoomControl: true }).setView(MAP_CENTER, MAP_ZOOM);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(state.map);
+      state.layer = L.markerClusterGroup({
+        showCoverageOnHover: false, spiderfyOnMaxZoom: true,
+        disableClusteringAtZoom: 17, maxClusterRadius: 40
+      }).addTo(state.map);
+
+      // Draw both geofence circles with labels
+      GEOFENCES.forEach(gf => {
+        L.circle(gf.center, {
+          radius: gf.radiusMeters, color: gf.color, opacity: 1,
+          weight: 3, fillColor: gf.fill, fillOpacity: 0.25, interactive: false
+        }).addTo(state.map);
+        // Label marker
+        L.marker(gf.center, {
+          icon: L.divIcon({
+            className: '',
+            html: `<div style="background:${gf.color};color:#fff;padding:.2rem .5rem;border-radius:.4rem;font-size:.7rem;font-weight:700;font-family:sans-serif;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25);">${gf.label}</div>`,
+            iconAnchor: [0, 0]
+          }),
+          interactive: false
+        }).addTo(state.map);
+      });
+
+      renderMap();
+    }
+
+    function distanceMeters(lat1, lon1, lat2, lon2) {
+      // Haversine approximation
+      const R = 6371000, dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function inGeofence(p, gf) {
+      return distanceMeters(p.lat, p.lon, gf.center[0], gf.center[1]) <= gf.radiusMeters;
+    }
+
+    function visibleMapPoints() {
+      return MAP_POINTS.filter(p => {
+        if (state.mapCrime !== 'ALL' && p.primary_type !== state.mapCrime) return false;
+        if (state.mapYear  !== 'ALL' && p.year !== state.mapYear)         return false;
+        if (state.district !== 'All' && p.district !== state.district)    return false;
+        if (state.geofenceOnly === 'HUDSON') return inGeofence(p, GEOFENCES[0]);
+        if (state.geofenceOnly === 'BARROW') return inGeofence(p, GEOFENCES[1]);
+        if (state.geofenceOnly === 'BOTH')   return inGeofence(p, GEOFENCES[0]) || inGeofence(p, GEOFENCES[1]);
+        return true;
+      });
+    }
+
+    function renderMap() {
+      if (!state.map || !state.layer) return;
+      state.layer.clearLayers();
+      const pts = visibleMapPoints();
+      pts.forEach(p => {
+        const color  = MAP_COLORS[p.primary_type] || '#555';
+        const marker = L.circleMarker([p.lat, p.lon], {
+          radius: 5.5, weight: 1.2, color: '#ffffff', fillColor: color, fillOpacity: 0.82
+        });
+        marker.bindPopup(`
+          <div style="min-width:220px;">
+            <div style="font-weight:700;color:#111;margin-bottom:.3rem;">${p.primary_type}</div>
+            <div><strong>Precinct:</strong> ${p.district}</div>
+            <div><strong>Year:</strong> ${p.year}</div>
+            <div><strong>Key code:</strong> ${p.iucr}</div>
+            <div><strong>Description:</strong> ${p.description || 'N/A'}</div>
+            <div><strong>Date:</strong> ${p.date ? new Date(p.date).toLocaleString() : 'N/A'}</div>
+          </div>`);
+        marker.addTo(state.layer);
+      });
+      state.map.setView(MAP_CENTER, MAP_ZOOM);
+      setTimeout(() => state.map.invalidateSize(), 100);
+    }
+
+    function resetMap() { state.map.setView(MAP_CENTER, MAP_ZOOM); }
+
+    // ─── Theme ───────────────────────────────────────────────────────────────
+    function setTheme(t) {
+      state.theme = t;
+      document.documentElement.setAttribute('data-theme', t);
+      if (state.chart) renderChart();
+    }
+    setTheme(state.theme);
+    $('#themeToggle').addEventListener('click', () => setTheme(state.theme === 'dark' ? 'light' : 'dark'));
+
+    // ─── Full render ─────────────────────────────────────────────────────────
+    function render() { renderHero(); renderSummary(); renderTable(); renderChart(); renderMap(); }
+
+    // ─── Event listeners ─────────────────────────────────────────────────────
+    $('#yearFilter').addEventListener('change',        e => { state.year     = e.target.value; render(); });
+    $('#districtFilter').addEventListener('change',    e => { state.district = e.target.value; render(); });
+    $('#typeFilter').addEventListener('change',        e => { state.type     = e.target.value; renderHero(); renderSummary(); renderTable(); renderChart(); });
+    $('#searchFilter').addEventListener('input',       e => { state.search   = e.target.value.trim(); renderTable(); });
+    $('#mapCrimeFilter').addEventListener('change',    e => { state.mapCrime = e.target.value; renderMap(); });
+    $('#mapYearFilter').addEventListener('change',     e => { state.mapYear  = e.target.value; renderMap(); });
+    $('#geofenceOnlyToggle').addEventListener('change',e => { state.geofenceOnly = e.target.value; renderMap(); });
+    $('#mapResetBtn').addEventListener('click',        () => resetMap());
+    $('#mapFullscreenBtn').addEventListener('click',   async () => {
+      const el = document.getElementById('crimeMap');
+      if (!document.fullscreenElement) { if (el.requestFullscreen) await el.requestFullscreen(); }
+      else if (document.exitFullscreen) await document.exitFullscreen();
+      setTimeout(() => state.map && state.map.invalidateSize(), 250);
+    });
+    document.addEventListener('fullscreenchange', () => setTimeout(() => state.map && state.map.invalidateSize(), 250));
+
+    // ─── Boot ────────────────────────────────────────────────────────────────
+    loadData()
+      .then(() => {
+        const overlay = document.getElementById('loadingOverlay');
+        overlay.classList.add('hidden');
+        setTimeout(() => overlay.remove(), 500);
+        render();
+        initMap();
+      })
+      .catch(err => console.error('Dashboard failed to load:', err));
+  </script>
+</body>
+</html>
